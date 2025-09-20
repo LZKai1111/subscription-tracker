@@ -1,6 +1,7 @@
 import { workflowClient } from '../config/upstash.js';
 import Subscription from '../models/subscription.model.js'
 import { SERVER_URL } from '../config/env.js';
+import dayjs from 'dayjs';
 
 export const createSubscription = async (req, res, next) => {
     try{
@@ -53,7 +54,7 @@ export const getAllSubscription = async (req, res, next) => {
     }
 }
 
-export const getSubscription = async ( req, res, rext ) => {
+export const getSubscription = async ( req, res, next ) => {
     try {
         const subscription = await Subscription.find({ user: req.params.id });
 
@@ -83,3 +84,39 @@ export const deleteSubscription = async ( req, res, next ) => {
         next(e);
     }
 }
+
+
+export const cancelSubscription = async ( req, res, next ) => {
+    try {
+        const { status } = req.body;
+        
+        if(!['active', 'cancelled'].includes(status)) {
+            return res.status(400).json({ error: "Invalid status value" });
+        }
+
+        const subscription = await Subscription.findByIdAndUpdate( req.params.id, {status} );
+
+        res.status(200).json({ success: true, data: subscription });
+        
+
+    } catch (e) {
+        next(e);
+    }
+}
+
+
+export const upcomingRenewals = async ( req, res, next ) => {
+    try {
+        const today = dayjs();
+        const oneMonthLater = dayjs().add(1, 'Month').endOf("day").toDate();
+
+        const subscriptions = await Subscription.find({ renewalDate: { $gte: today, $lte: oneMonthLater }});
+
+        res.status(200).json({ success: true, data: subscriptions });
+
+    } catch (e) {
+        next(e);
+    }
+}
+
+
